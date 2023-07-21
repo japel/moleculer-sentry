@@ -35,7 +35,7 @@ module.exports = {
   events: {
     'metrics.trace.span.finish'(metric) {
       if (metric.error && this.isSentryReady() && (!this.shouldReport || this.shouldReport(metric) == true)) {
-        this.sendError(metric)
+        this.sendSentryError(metric)
       }
     }
   },
