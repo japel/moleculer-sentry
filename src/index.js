@@ -6,8 +6,8 @@
 
 'use strict'
 
-const Sentry = require('@sentry/node')
-const SentryUtils = require('@sentry/utils')
+const Sentry = require('@sentry/node');
+const SentryUtils = require('@sentry/utils');
 
 module.exports = {
   name: 'sentry',
@@ -20,28 +20,24 @@ module.exports = {
     sentry: {
       /** @type {String} DSN given by sentry. */
       dsn: null,
-      /** @type {String} Name of event fired by "Event" exported in tracing. */
-      tracingEventName: '$tracing.spans',
       /** @type {Object} Additional options for `Sentry.init`. */
       options: {},
-      /** @type {String?} Name of the meta containing user infos. */
-      userMetaKey: null,
+      scope: {
+        /** @type {String?} Name of the meta containing user infos */
+        user: null
+      }
     }
   },
 
   /**
-   * Events
-   */
+	 * Events
+	 */
   events: {
-    // bind event listeners
-    '**'(payload, _, event) {
-      // only listen to specifig tracing event
-      if (event !== this.settings.sentry.tracingEventName) {
-        return
+    'metrics.trace.span.finish'(metric) {
+      if (metric.error && this.isSentryReady() && (!this.shouldReport || this.shouldReport(metric) == true)) {
+        this.sendError(metric)
       }
-
-      this.onTracingEvent(payload)
-    },
+    }
   },
 
   /**
@@ -119,10 +115,8 @@ module.exports = {
           scope.setExtra('data', metric.error.data)
         }
 
-        const userMetaKey = this.getUserMetaKey()
-
-        if (userMetaKey && metric.meta && metric.meta[userMetaKey]) {
-          scope.setUser(metric.meta[userMetaKey])
+        if (this.settings.scope && this.settings.scope.user && metric.meta && metric.meta[this.settings.scope.user]) {
+          scope.setUser(metric.meta[this.settings.scope.user])
         }
 
         Sentry.captureEvent({
@@ -138,20 +132,6 @@ module.exports = {
     isSentryReady() {
       return Sentry.getCurrentHub().getClient() !== undefined
     },
-
-    /**
-     * Tracing event handler
-     *
-     * @param metrics
-     * @return void
-     */
-    onTracingEvent(metrics) {
-      metrics.forEach((metric) => {
-        if (metric.error && this.isSentryReady() && (!this.shouldReport || this.shouldReport(metric) == true)) {
-          this.sendSentryError(metric)
-        }
-      })
-    }
   },
 
   started() {
