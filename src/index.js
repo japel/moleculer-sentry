@@ -75,7 +75,7 @@ module.exports = {
      * @returns  {String}
      */
     getUserMetaKey() {
-      return this.settings.sentry.userMetaKey
+      return this.settings.sentry.scope.user
     },
 
     /**
@@ -115,8 +115,10 @@ module.exports = {
           scope.setExtra('data', metric.error.data)
         }
 
-        if (this.settings.scope && this.settings.scope.user && metric.meta && metric.meta[this.settings.scope.user]) {
-          scope.setUser(metric.meta[this.settings.scope.user])
+        const userMetaKey = this.getUserMetaKey()
+
+        if (userMetaKey && metric.meta && metric.meta[userMetaKey]) {
+          scope.setUser(metric.meta[userMetaKey])
         }
 
         Sentry.captureEvent({
